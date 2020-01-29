@@ -6,6 +6,7 @@ export interface ExternalProcessRequestType {
     listener?: LaunchExternalProcessListener;
     lifetime?: string;
     certificate?: CertificationInfo;
+    uuid?: string;
 }
 
 export interface CertificationInfo {
@@ -43,5 +44,6 @@ export interface ExternalProcessInfo {
 }
 
 export interface ServiceConfiguration {
+    config: object;
     name: string;
 }

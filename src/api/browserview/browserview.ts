@@ -1,9 +1,10 @@
 import { WebContents } from '../webcontents/webcontents';
-import { BaseEventMap } from '../events/base';
 import Transport from '../../transport/transport';
 import { Identity } from '../../identity';
 import { Base } from '../base';
-interface AutoResizeOptions {
+import { ViewEvents } from '../events/browserview';
+import { _Window } from '../window/window';
+export interface AutoResizeOptions {
     /**
      * If true, the view's width will grow and shrink together with the window. false
      * by default.
@@ -14,6 +15,16 @@ interface AutoResizeOptions {
      * by default.
      */
     height: boolean;
+    /**
+     * If true, the view's x position and width will grow and shrink proportionly with
+     * the window. false by default.
+     */
+    horizontal: boolean;
+    /**
+     * If true, the view's y position and height will grow and shrink proportinaly with
+     * the window. false by default.
+     */
+    vertical: boolean;
 }
 export interface BrowserViewOptions {
     autoResize?: AutoResizeOptions;
@@ -41,13 +52,29 @@ export class BrowserViewModule extends Base {
     }
 }
 
-export class BrowserView extends WebContents<BaseEventMap> {
+export class BrowserView extends WebContents<ViewEvents> {
     constructor(wire: Transport, public identity: Identity) {
-        super(wire, identity, 'browserview');
+        super(wire, identity, 'view');
+        this.topic = 'view';
     }
-    // public attach = async (target: Identity) => {
-    //     await this.wire.sendAction('attach-browser-view', {target, ...this.identity})
-    // }
+    public attach = async (target: Identity) => {
+        await this.wire.sendAction('attach-browser-view', {target, ...this.identity});
+    }
+
+    /**
+    * Destroys the current view
+    * @return {Promise.<void>}
+    * @tutorial BrowserView.destroy
+    */
+    public destroy = async () => {
+        await this.wire.sendAction('destroy-browser-view', { ...this.identity });
+    }
+    public show = async () => {
+        await this.wire.sendAction('show-browser-view', { ...this.identity });
+    }
+    public hide = async () => {
+        await this.wire.sendAction('hide-browser-view', { ...this.identity });
+    }
     public setBounds = async (bounds: any) => {
         await this.wire.sendAction('set-browser-view-bounds', {bounds, ...this.identity});
     }
@@ -55,5 +82,14 @@ export class BrowserView extends WebContents<BaseEventMap> {
         const ack = await this.wire.sendAction('get-browser-view-info', {...this.identity});
         return ack.payload.data;
     }
-
+    /**
+    * Retrieves the window the view is currently attached to.
+    * @experimental
+    * @return {Promise.<_Window>}
+    * @tutorial BrowserView.getCurrentWindow
+    */
+    public getCurrentWindow = async () => {
+        const { payload: { data } } = await this.wire.sendAction<{data: Identity}>('get-view-window', {...this.identity});
+        return new _Window(this.wire, data);
+    }
 }

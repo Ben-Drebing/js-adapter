@@ -15,7 +15,10 @@ const newManifestPath = (uuid: string) => path.resolve(`test/uuid-enforcement-ap
 const createManifest = (uuid: string, securityRealm = `uuid-enforcement-realm-${realmCount += 1}`) => {
     const manifest = {
         startup_app: { uuid, name: uuid },
-        runtime: { version: testVersion, securityRealm }
+        runtime: {
+            version: testVersion,
+            arguments: '--enable-mesh --security-realm=' + securityRealm
+        }
     };
     manifestPath = newManifestPath(uuid);
     fs.writeFileSync(manifestPath, JSON.stringify(manifest));
@@ -31,7 +34,7 @@ const newUuid = () => `duplicatedUuid${uuidCount += 1}`;
 let runningApps: Application[] = [];
 
 async function cleanupRunningApps() {
-    await Promise.all(runningApps.map(app => app.quit()));
+    await Promise.all(runningApps.map(app => app.quit().catch(() => undefined)));
     runningApps = [];
     return;
 }
@@ -103,7 +106,7 @@ describe('UUID Enforcement', async function () {
             failedFirstTry = true;
         }
         // @ts-ignore - wire is private
-        await runtime1.wire.wire.shutdown();
+        await runtime1.wire.shutdown();
         let failedSecondTry = false;
         try {
             await externalConnection(dupeUuid);

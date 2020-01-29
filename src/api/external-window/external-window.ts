@@ -1,7 +1,6 @@
 import { _Window } from '../window/window';
-import { AnchorType } from '../../shapes';
+import { AnchorType, Bounds } from '../../shapes';
 import { Base, EmitterBase } from '../base';
-import { Bounds } from '../../shapes';
 import { ExternalWindowEvents } from '../events/externalWindow';
 import { GroupWindowIdentity, Identity } from '../../identity';
 import Transport from '../../transport/transport';
@@ -12,36 +11,22 @@ import Transport from '../../transport/transport';
 export default class ExternalWindowModule extends Base {
     /**
      * Asynchronously returns an external window object that represents
-     * an existing external window.
-     * @param { Identity } identity
+     * an existing external window.<br>
+     * Note: This method is restricted by default and must be enabled via
+     * <a href="https://developers.openfin.co/docs/api-security">API security settings</a>.
+     * @param { ExternalWindowIdentity } identity
      * @return {Promise.<ExternalWindow>}
      * @static
      * @experimental
-     * @tutorial Window.wrap
+     * @tutorial ExternalWindow.wrap
      */
-    public async wrap(identity: Identity): Promise<ExternalWindow> {
-        await this.wire.sendAction('register-native-external-window', identity);
-        return new ExternalWindow(this.wire, identity);
-    }
 
-    /**
-     * Synchronously returns an external window object that represents an
-     * existing external window.
-     * This method is intended for debugging / experimentation only and should not be
-     * used in production. It will not handle errors gracefully in cases such as an attempt
-     * to wrap a non-existent window.
-     * Use `ExternalWindow.wrap` instead.
-     * @param { Identity } identity
-     * @return {ExternalWindow}
-     * @static
-     * @experimental
-     * @tutorial Window.wrapSync
-     */
-    public wrapSync(identity: Identity): ExternalWindow {
-        console.warn('ExternalWindow.wrapSync is only intended for debugging and may not handle errors properly.'
-            + '\nUse ExternalWindow.wrap instead.');
-        this.wire.sendAction('register-native-external-window', identity);
-        return new ExternalWindow(this.wire, identity);
+    public async wrap(identity: Identity): Promise<ExternalWindow> {
+        const response = await this.wire.sendAction('register-native-external-window', identity);
+        // Allow core to provide uuid if none is provided by user,
+        // or nativeId when wrapping via a uuid obtained from `launchExternalProcess`
+        const identityFromCore = response.payload.data;
+        return new ExternalWindow(this.wire, identityFromCore);
     }
 }
 
@@ -52,8 +37,8 @@ export default class ExternalWindowModule extends Base {
  * External Windows are useful for grouping, moving and resizing non-openfin applications
  * as well as listening to events that are dispatched by these applications.<br>
  * They are also compatible with OpenFin's Layouts service to facilitate
- * a complete positional control over all running applications.<br>
- * External Windows has the ability to listen for <a href="tutorial-ExternalWindow.EventEmitter.html"> external window specific events</a>.
+ * complete positional control over all running applications.<br>
+ * External Windows has the ability to listen for <a href="tutorial-ExternalWindow.EventEmitter.html"> external window-specific events</a>.
  * @class
  * @alias ExternalWindow
  * @hideconstructor
@@ -83,28 +68,6 @@ export class ExternalWindow extends EmitterBase<ExternalWindowEvents> {
     public async close(): Promise<void> {
         await this.wire.sendAction('close-external-window', this.identity);
         Object.setPrototypeOf(this, null);
-    }
-
-    /**
-     * Prevents a user from changing an external window's size/position
-     * when using the window's frame.
-     * @return {Promise.<void>}
-     * @experimental
-     * @tutorial Window.disableUserMovement
-     */
-    public async disableUserMovement(): Promise<void> {
-        await this.wire.sendAction('disable-external-window-user-movement', this.identity);
-    }
-
-    /**
-     * Re-enables user changes to an external window's size/position
-     * when using the window's frame.
-     * @return {Promise.<void>}
-     * @experimental
-     * @tutorial Window.enableUserMovement
-     */
-    public async enableUserMovement(): Promise<void> {
-        await this.wire.sendAction('enable-external-window-user-movement', this.identity);
     }
 
     /**
@@ -219,7 +182,7 @@ export class ExternalWindow extends EmitterBase<ExternalWindowEvents> {
     }
 
     /**
-     * Joins the same window group as the specified window.
+     * Joins the same window group as the specified window. Currently unsupported (method will nack).
      * @param { _Window | ExternalWindow } target The window whose group is to be joined
      * @return {Promise.<void>}
      * @experimental

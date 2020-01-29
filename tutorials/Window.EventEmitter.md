@@ -81,6 +81,7 @@ finWindow.removeAllListeners("bounds-changed");
 * closed
 * closing
 * crashed
+* did-change-theme-color
 * disabled-movement-bounds-changed
 * disabled-movement-bounds-changing
 * embedded
@@ -98,6 +99,9 @@ finWindow.removeAllListeners("bounds-changed");
 * minimized
 * options-changed
 * navigation-rejected
+* page-favicon-updated
+* page-title-updated
+* performance-report
 * preload-scripts-state-changed
 * preload-scripts-state-changing
 * reloaded
@@ -108,6 +112,10 @@ finWindow.removeAllListeners("bounds-changed");
 * shown
 * user-movement-disabled
 * user-movement-enabled
+* view-attached
+* view-detached
+* will-move
+* will-resize
 
 ### Window Events
 
@@ -256,6 +264,18 @@ Generated when a window has crashed.
                       //  "out-of-memory"         process died due to oom
     topic: "window",
     type: "crashed",
+    uuid: "AppUUID" //(string) the UUID of the application the window belongs to.
+}
+```
+
+#### did-change-theme-color
+Emitted when a page's theme color changes. This is usually due to encountering a meta tag: <meta name='theme-color' content='#ff0000'>
+```js
+{
+    color: "#FF0000",
+    name: "windowOne", //the name of the window.
+    topic: "window",
+    type: "did-change-theme-color",
     uuid: "AppUUID" //(string) the UUID of the application the window belongs to.
 }
 ```
@@ -571,6 +591,33 @@ Generated when window navigation is rejected as per ContentNavigation whitelist/
 }
 ```
 
+#### page-favicon-updated
+Emitted when page receives favicon urls.
+```js
+{
+    favicons: [
+        "http://www.openfin.co/favicon.ico"
+    ],
+    name: "windowOne", //the name of the window.
+    topic: "window",
+    type: "page-favicon-updated",
+    uuid: "AppUUID" //(string) the UUID of the application the window belongs to.
+}
+```
+
+#### page-title-updated
+Fired when page title is set during navigation. explicitSet is false when title is synthesized from file url.
+```js
+{
+    explicitSet: true, // false when title is synthesized from file url.
+    name: "windowOne", //the name of the window.
+    title: "testTitle",
+    topic: "window",
+    type: "page-title-updated",
+    uuid: "AppUUID" //(string) the UUID of the application the window belongs to.
+}
+```
+
 #### preload-scripts-state-changed
 Generated after the execution of all of a window's preload scripts. Contains information about all window's preload scripts' final states.
 ```js
@@ -722,5 +769,108 @@ Generated when a window's user movement becomes enabled.
     topic: "window",
     type: "user-movement-enabled",
     uuid: "AppUUID" //(string) the UUID of the application the window belongs to.
+}
+```
+
+#### view-attached
+Generated when a window has a view attached to it.
+```js
+//This response has the following shape:
+{
+    name: "windowOne" // the name of this Window
+    previousTarget: {uuid: 'previousWindowUuid', name: 'previousWindowName'}, // the identity of the window this BrowserView is being detached from
+    target: {uuid: 'windowUuid', name: 'windowOne'}, // the identity of the window this BrowserView is attaching to
+    topic: "window",
+    type: "view-attached",
+    uuid: "AppUUID" // the UUID of the application this window belongs to.
+    viewIdentity: {uuid: 'viewUuid', name: 'viewName'}, // the identity of the BrowserView
+}
+```
+
+#### view-detached
+Generated when a window has a view detached from it.
+```js
+//This response has the following shape:
+{
+    name: "windowOne" // the name of this Window
+    previousTarget: {uuid: 'previousWindowUuid', name: 'previousWindowName'}, // the identity of the window this BrowserView is being detached from
+    target: {uuid: 'windowUuid', name: 'windowOne'}, // the identity of the window this BrowserView is attaching to
+    topic: "window",
+    type: "view-attached",
+    uuid: "AppUUID" // the UUID of the application this window belongs to.
+    viewIdentity: {uuid: 'viewUuid', name: 'viewName'}, // the identity of the BrowserView
+}
+```
+
+#### will-move
+Generated when a window is moved by the user.  For use with monitor scaling that is not 100%.  Bounds are given in physical pixels (not adjusted for monitor scale factor).
+```js
+//This response has the following shape:
+{
+    height: 300,      //the new height of the window.
+    left: 300,        //the left-most coordinate of the window.
+    monitorScaleFactor: 1.5 //the scaling factor of the monitor
+    name: "windowName", //(string) the name of the window.
+    top: 300,         //the top-most coordinate of the window.
+    topic: "window",
+    type: "will-move",
+    uuid: "appUUID",  //the UUID of the application the window belongs to.
+    width: 300        //the new width of the window.
+}
+```
+
+#### will-resize
+Generated when a window is resized by the user.  For use with monitor scaling that is not 100%.  Bounds are given in physical pixels (not adjusted for monitor scale factor).  The event will fire when a user resize is blocked by window options such as maxWidth or minHeight but not if the window is not resizable.  
+```js
+//This response has the following shape:
+{
+    height: 300,      //the new height of the window.
+    left: 300,        //the left-most coordinate of the window.
+    monitorScaleFactor: 1.5 //the scaling factor of the monitor
+    name: "windowName", //(string) the name of the window.
+    top: 300,         //the top-most coordinate of the window.
+    topic: "window",
+    type: "will-resize",
+    uuid: "appUUID",  //the UUID of the application the window belongs to.
+    width: 300        //the new width of the window.
+}
+```
+#### performance-report
+Generated when window finishes loading. Provides performance and navigation data.
+```js
+//This response has the following shape:
+{
+    topic: "window",
+    type: "performance-report",
+    uuid: "appUUID", //(string) the UUID of the application the window belongs to.
+    name: "windowName",
+    navigation: {
+        redirectCount: 0,
+        type: 0
+    },
+    timeOrigin: 1561991787065.651,
+    timing: {
+        connectEnd: 0,
+        connectStart: 0,
+        domComplete: 1561991787504,
+        domContentLoadedEventEnd: 1561991787503,
+        domContentLoadedEventStart: 1561991787503,
+        domInteractive: 1561991787503,
+        domLoading: 1561991787283,
+        domainLookupEnd: 0,
+        domainLookupStart: 0,
+        fetchStart: 0,
+        loadEventEnd: 0,
+        loadEventStart: 1561991787504,
+        navigationStart: 1561991787065,
+        redirectEnd: 0,
+        redirectStart: 0,
+        requestStart: 0,
+        responseEnd: 1561991787282,
+        responseStart: 0,
+        secureConnectionStart: 0,
+        unloadEventEnd: 0,
+        unloadEventStart: 0
+    }
 }
 ```

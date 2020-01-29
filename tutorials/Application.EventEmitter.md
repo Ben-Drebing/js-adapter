@@ -93,7 +93,7 @@ app.removeAllListeners("closed");
 * window-created
 * window-disabled-movement-bounds-changed (see {@tutorial Window.EventEmitter})
 * window-disabled-movement-bounds-changing (see {@tutorial Window.EventEmitter})
-* window-embedded (see {@tutorial Window.addListener})
+* window-embedded (see {@tutorial Window.EventEmitter})
 * window-end-load
 * window-external-process-exited (see {@tutorial Window.EventEmitter})
 * window-external-process-started (see {@tutorial Window.EventEmitter})
@@ -109,6 +109,7 @@ app.removeAllListeners("closed");
 * window-options-changed (see {@tutorial Window.EventEmitter})
 * window-navigation-rejected
 * window-not-responding
+* window-performance-report (see {@tutorial Window.EventEmitter})
 * window-preload-scripts-state-changed (see {@tutorial Window.EventEmitter})
 * window-preload-scripts-state-changing (see {@tutorial Window.EventEmitter})
 * window-reloaded
@@ -119,6 +120,13 @@ app.removeAllListeners("closed");
 * window-start-load
 * window-user-movement-disabled (see {@tutorial Window.EventEmitter})
 * window-user-movement-enabled (see {@tutorial Window.EventEmitter})
+* window-will-move (see {@tutorial Window.EventEmitter})
+* window-will-resize (see {@tutorial Window.EventEmitter})
+* view-created (see {@tutorial BrowserView.EventEmitter})
+* view-attached (see {@tutorial BrowserView.EventEmitter})
+* view-shown (see {@tutorial BrowserView.EventEmitter})
+* view-hidden (see {@tutorial BrowserView.EventEmitter})
+* view-destroyed (see {@tutorial BrowserView.EventEmitter})
 
 ### Application Events
 

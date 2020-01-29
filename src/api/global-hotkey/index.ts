@@ -27,6 +27,8 @@ export default class GlobalHotkey extends EmitterBase<GlobalHotkeyEvents> {
 
     /**
      * Registers a global hotkey with the operating system.
+     * @param { string } hotkey a hotkey string
+     * @param { Function } listener called when the registered hotkey is pressed by the user.
      * @return {Promise.<void>}
      * @tutorial GlobalHotkey.register
      */
@@ -38,6 +40,7 @@ export default class GlobalHotkey extends EmitterBase<GlobalHotkeyEvents> {
 
     /**
      * Unregisters a global hotkey with the operating system.
+     * @param { string } hotkey a hotkey string
      * @return {Promise.<void>}
      * @tutorial GlobalHotkey.unregister
      */
@@ -62,7 +65,8 @@ export default class GlobalHotkey extends EmitterBase<GlobalHotkeyEvents> {
 
     /**
      * Checks if a given hotkey has been registered
-     * @return {Promise.<bookean>}
+     * @param { string } hotkey a hotkey string
+     * @return {Promise.<boolean>}
      * @tutorial GlobalHotkey.isRegistered
      */
     public async isRegistered(hotkey: string): Promise<boolean> {

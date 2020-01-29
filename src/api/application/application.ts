@@ -8,6 +8,7 @@ import { Bounds } from '../../shapes';
 import { ApplicationEvents } from '../events/application';
 import { ApplicationOption } from './applicationOption';
 import { validateIdentity } from '../../util/validate';
+import { BrowserView } from '../browserview/browserview';
 
 export interface TrayIconClickReply extends Point, Reply<'application', 'tray-icon-clicked'> {
     button: number;
@@ -43,6 +44,16 @@ export interface TrayInfo {
     monitorInfo: MonitorInfo;
     x: number;
     y: number;
+}
+
+export interface ManifestInfo {
+    uuid: string;
+    manifestUrl: string;
+}
+
+export interface RvmLaunchOptions {
+    noUi?: boolean;
+    userAppConfigArgs?: object;
 }
 
 /**
@@ -176,6 +187,19 @@ export default class ApplicationModule extends Base {
     }
 
     /**
+     * Asynchronously starts a batch of applications given an array of application identifiers and manifestUrls.
+     * Returns once the RVM is finished attempting to launch the applications.
+     * @param { Array.<ManifestInfo> } applications
+     * @return {Promise.<void>}
+     * @static
+     * @tutorial Application.startManyManifests
+     * @experimental
+     */
+    public async startManyManifests(applications: Array<ManifestInfo>): Promise<void> {
+        return this.wire.sendAction('run-applications', { applications }).then(() => undefined);
+    }
+
+    /**
      * Asynchronously returns an Application object that represents the current application
      * @return {Promise.<Application>}
      * @tutorial Application.getCurrent
@@ -198,14 +222,15 @@ export default class ApplicationModule extends Base {
     /**
      * Retrieves application's manifest and returns a running instance of the application.
      * @param {string} manifestUrl - The URL of app's manifest.
+     * @param {RvmLaunchOptions} [opts] - Parameters that the RVM will use.
      * @return {Promise.<Application>}
      * @tutorial Application.startFromManifest
      * @static
      */
-    public async startFromManifest(manifestUrl: string): Promise<Application> {
+    public async startFromManifest(manifestUrl: string, opts?: RvmLaunchOptions): Promise<Application> {
         const app = await this._createFromManifest(manifestUrl);
         //@ts-ignore using private method without warning.
-        await app._run();
+        await app._run(opts);
         return app;
     }
     public createFromManifest(manifestUrl: string): Promise<Application> {
@@ -358,11 +383,12 @@ export class Application extends EmitterBase<ApplicationEvents> {
      */
     public async quit(force: boolean = false): Promise<void> {
         await this._close(force);
-        await this.wire.sendAction('destroy-application', Object.assign({force}, this.identity));
+        await this.wire.sendAction('destroy-application', Object.assign({ force }, this.identity));
     }
     //tslint:disable-next-line:function-name
     private _close(force: boolean = false): Promise<void> {
-        return this.wire.sendAction('close-application', Object.assign({}, this.identity, { force })).then(() => undefined);
+        return this.wire.sendAction('close-application', Object.assign({}, { force }, this.identity))
+            .then(() => undefined);
     }
     public close(force: boolean = false): Promise<void> {
         console.warn('Deprecation Warning: Application.close is deprecated Please use Application.quit');
@@ -379,7 +405,7 @@ export class Application extends EmitterBase<ApplicationEvents> {
             .then(({ payload }) => {
                 const identityList: Array<Identity> = [];
                 payload.data.forEach((winName: string) => {
-                    identityList.push({uuid: this.identity.uuid, name: winName});
+                    identityList.push({ uuid: this.identity.uuid, name: winName });
                 });
                 return this.windowListFromIdentityList(identityList);
             });
@@ -393,19 +419,19 @@ export class Application extends EmitterBase<ApplicationEvents> {
      */
     public getGroups(): Promise<Array<Array<_Window>>> {
         const winGroups: Array<Array<_Window>> = <Array<Array<_Window>>>[];
-        return this.wire.sendAction('get-application-groups', Object.assign({}, this.identity, {
-                crossApp: true // cross app group supported
-            })).then(({ payload }) => {
-                payload.data.forEach((windowList: any[], index: number) => {
-                    const identityList: Array<Identity> = [];
-                    windowList.forEach(winInfo => {
-                        identityList.push({uuid: winInfo.uuid, name: winInfo.windowName});
-                    });
-                    winGroups[index] = this.windowListFromIdentityList(identityList);
+        return this.wire.sendAction('get-application-groups', Object.assign({}, {
+            crossApp: true // cross app group supported
+        }, this.identity)).then(({ payload }) => {
+            payload.data.forEach((windowList: any[], index: number) => {
+                const identityList: Array<Identity> = [];
+                windowList.forEach(winInfo => {
+                    identityList.push({ uuid: winInfo.uuid, name: winInfo.windowName });
                 });
-
-                return winGroups;
+                winGroups[index] = this.windowListFromIdentityList(identityList);
             });
+
+            return winGroups;
+        });
     }
 
     /**
@@ -439,7 +465,16 @@ export class Application extends EmitterBase<ApplicationEvents> {
         return this.wire.sendAction('get-shortcuts', this.identity)
             .then(({ payload }) => payload.data);
     }
-
+    /**
+    * Retrieves current application's views.
+    * @experimental
+    * @return {Promise.Array.<BrowserView>}
+    * @tutorial Application.getViews
+    */
+    public async getViews(): Promise<Array<BrowserView>> {
+        const {payload} = await this.wire.sendAction<{ data: Identity[] }>('application-get-views', this.identity);
+        return payload.data.map(id => new BrowserView(this.wire, id));
+    }
     /**
      * Returns the current zoom level of the application.
      * @return {Promise.<number>}
@@ -466,7 +501,8 @@ export class Application extends EmitterBase<ApplicationEvents> {
     * @tutorial Application.registerUser
     */
     public registerUser(userName: string, appName: string): Promise<void> {
-        return this.wire.sendAction('register-user', Object.assign({}, this.identity, {userName, appName})).then(() => undefined);
+        return this.wire.sendAction('register-user', Object.assign({}, { userName, appName }, this.identity))
+            .then(() => undefined);
     }
 
     /**
@@ -498,11 +534,13 @@ export class Application extends EmitterBase<ApplicationEvents> {
         console.warn('Deprecation Warning: Application.run is deprecated Please use fin.Application.start');
         return this._run();
     }
+
     // tslint:disable-next-line:function-name
-    private _run(): Promise<void> {
-        return this.wire.sendAction('run-application', Object.assign({}, this.identity, {
-            manifestUrl: this._manifestUrl
-        })).then(() => undefined);
+    private _run(opts: RvmLaunchOptions = {}): Promise<void> {
+        return this.wire.sendAction('run-application', Object.assign({}, {
+            manifestUrl: this._manifestUrl,
+            opts
+        }, this.identity)).then(() => undefined);
     }
 
     /**
@@ -517,7 +555,7 @@ export class Application extends EmitterBase<ApplicationEvents> {
     /**
      * Sends a message to the RVM to upload the application's logs. On success,
      * an object containing logId is returned.
-     * @return {Promise.<any>}
+     * @return {Promise.<LogInfo>}
      * @tutorial Application.sendApplicationLog
      */
     public async sendApplicationLog(): Promise<LogInfo> {
@@ -527,14 +565,14 @@ export class Application extends EmitterBase<ApplicationEvents> {
 
     /**
      * Adds a customizable icon in the system tray.  To listen for a click on the icon use the `tray-icon-clicked` event.
-     * @param { string } iconUrl Image URL to be used as the icon
+     * @param { string } icon Image URL or base64 encoded string to be used as the icon
      * @return {Promise.<void>}
      * @tutorial Application.setTrayIcon
      */
-    public setTrayIcon(iconUrl: string): Promise<void> {
-        return this.wire.sendAction('set-tray-icon', Object.assign({}, this.identity, {
-            enabledIcon: iconUrl
-        })).then(() => undefined);
+    public setTrayIcon(icon: string): Promise<void> {
+        return this.wire.sendAction('set-tray-icon', Object.assign({}, {
+            enabledIcon: icon
+        }, this.identity)).then(() => undefined);
     }
 
     /**
@@ -547,8 +585,8 @@ export class Application extends EmitterBase<ApplicationEvents> {
      * @tutorial Application.setShortcuts
      */
     public setShortcuts(config: ShortCutConfig): Promise<void> {
-        return this.wire.sendAction('set-shortcuts', Object.assign({}, this.identity, {data: config})
-               ).then(() => undefined);
+        return this.wire.sendAction('set-shortcuts', Object.assign({}, { data: config }, this.identity))
+            .then(() => undefined);
     }
 
     /**
@@ -559,7 +597,8 @@ export class Application extends EmitterBase<ApplicationEvents> {
      * @tutorial Application.setZoomLevel
      */
     public setZoomLevel(level: number): Promise<void> {
-        return this.wire.sendAction('set-application-zoom-level', Object.assign({}, this.identity, { level })).then(() => undefined);
+        return this.wire.sendAction('set-application-zoom-level', Object.assign({}, { level }, this.identity))
+            .then(() => undefined);
     }
 
     /**
@@ -569,7 +608,7 @@ export class Application extends EmitterBase<ApplicationEvents> {
      * @tutorial Application.setAppLogUsername
      */
     public async setAppLogUsername(username: string): Promise<void> {
-        await this.wire.sendAction('set-app-log-username', Object.assign({data: username}, this.identity));
+        await this.wire.sendAction('set-app-log-username', Object.assign({ data: username }, this.identity));
     }
 
     /**

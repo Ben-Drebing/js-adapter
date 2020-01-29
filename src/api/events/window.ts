@@ -1,6 +1,7 @@
 import { CrashedEvent } from './application';
 import {WindowEvent, BaseEventMap} from './base';
 import { WindowOptionDiff } from '../window/windowOption';
+import { WebContentsEventMapping, WindowResourceLoadFailedEvent, WindowResourceResponseReceivedEvent } from './webcontents';
 
 export type SpecificWindowEvent<Type> = WindowEvent<'window', Type>;
 
@@ -73,24 +74,6 @@ export interface WindowPreloadScriptsStateChangedEvent<Topic, Type> extends Wind
     preloadScripts: (PreloadScriptInfo & any)[];
 }
 
-export interface WindowResourceLoadFailedEvent<Topic, Type> extends WindowEvent<Topic, Type> {
-    errorCode: number;
-    errorDescription: string;
-    validatedURL: string;
-    isMainFrame: boolean;
-}
-
-export interface WindowResourceResponseReceivedEvent<Topic, Type> extends WindowEvent<Topic, Type> {
-    status: boolean;
-    newUrl: string;
-    originalUrl: string;
-    httpResponseCode: number;
-    requestMethod: string;
-    referrer: string;
-    headers: any;
-    resourceType: 'mainFrame' | 'subFrame' | 'styleSheet' | 'script' | 'image' | 'object' | 'xhr' | 'other';
-}
-
 export interface WindowBeginBoundsChangingEvent<Topic, Type> extends WindowEvent<Topic, Type> {
     height: number;
     left: number;
@@ -116,6 +99,14 @@ export interface WindowBoundsChange<Topic, Type> extends WindowEvent<Topic, Type
     width: number;
 }
 
+export interface WillMoveOrResize<Topic, Type> extends WindowEvent<Topic, Type> {
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+    monitorScaleFactor: number;
+}
+
 export interface WindowGroupChanged<Topic, Type> extends WindowEvent<Topic, Type> {
     memberOf: 'source' | 'target' | 'nothing';
     reason: 'leave' | 'join' | 'merge' | 'disband';
@@ -133,7 +124,13 @@ export interface WindowGroupChanged<Topic, Type> extends WindowEvent<Topic, Type
     targetWindowName: string;
 }
 
-export interface WindowEventMapping<Topic = string, Type = string> extends BaseEventMap {
+export interface WindowPerformanceReport<Topic, Type> extends WindowEvent<Topic, Type> {
+    timing: typeof window.performance.timing;
+    timeOrigin: typeof window.performance.timeOrigin;
+    navigation: typeof window.performance.navigation;
+}
+
+export interface WindowEventMapping<Topic = string, Type = string> extends WebContentsEventMapping {
     'auth-requested': WindowAuthRequestedEvent<Topic, Type>;
     'begin-user-bounds-changing': WindowBeginBoundsChangingEvent<Topic, Type>;
     'blurred': WindowEvent<Topic, Type>;
@@ -142,7 +139,6 @@ export interface WindowEventMapping<Topic = string, Type = string> extends BaseE
     'close-requested': WindowEvent<Topic, Type>;
     'closed': WindowEvent<Topic, Type>;
     'closing': WindowEvent<Topic, Type>;
-    'crashed': CrashedEvent & WindowEvent<Topic, Type>;
     'disabled-movement-bounds-changed': WindowBoundsChange<Topic, Type>;
     'disabled-movement-bounds-changing': WindowBoundsChange<Topic, Type>;
     'embedded': WindowEvent<Topic, Type>;
@@ -157,16 +153,19 @@ export interface WindowEventMapping<Topic = string, Type = string> extends BaseE
     'minimized': WindowEvent<Topic, Type>;
     'navigation-rejected': WindowNavigationRejectedEvent<Topic, Type>;
     'options-changed': WindowOptionsChangedEvent<Topic, Type>;
+    'performance-report': WindowPerformanceReport<Topic, Type>;
     'preload-scripts-state-changed': WindowPreloadScriptsStateChangeEvent<Topic, Type>;
     'preload-scripts-state-changing': WindowPreloadScriptsStateChangeEvent<Topic, Type>;
-    'resource-load-failed': WindowResourceLoadFailedEvent<Topic, Type>;
-    'resource-response-received': WindowResourceResponseReceivedEvent<Topic, Type>;
     'reloaded': WindowReloadedEvent<Topic, Type>;
     'restored': WindowEvent<Topic, Type>;
     'show-requested': WindowEvent<Topic, Type>;
     'shown': WindowEvent<Topic, Type>;
     'user-movement-disabled': WindowEvent<Topic, Type>;
     'user-movement-enabled': WindowEvent<Topic, Type>;
+    'view-attached': WindowEvent<Topic, Type>;
+    'view-detached': WindowEvent<Topic, Type>;
+    'will-move': WillMoveOrResize<Topic, Type>;
+    'will-resize': WillMoveOrResize<Topic, Type>;
 }
 
 export interface PropagatedWindowEventMapping<Topic = string, Type = string> extends BaseEventMap {
@@ -191,6 +190,7 @@ export interface PropagatedWindowEventMapping<Topic = string, Type = string> ext
     'window-minimized': WindowEvent<Topic, Type>;
     'window-navigation-rejected': WindowNavigationRejectedEvent<Topic, Type>;
     'window-options-changed': WindowOptionsChangedEvent<Topic, Type>;
+    'window-performance-report': WindowPerformanceReport<Topic, Type>;
     'window-preload-scripts-state-changed': WindowPreloadScriptsStateChangeEvent<Topic, Type>;
     'window-preload-scripts-state-changing': WindowPreloadScriptsStateChangedEvent<Topic, Type>;
     'window-resource-load-failed': WindowResourceLoadFailedEvent<Topic, Type>;
@@ -200,6 +200,8 @@ export interface PropagatedWindowEventMapping<Topic = string, Type = string> ext
     'window-shown': WindowEvent<Topic, Type>;
     'window-user-movement-disabled': WindowEvent<Topic, Type>;
     'window-user-movement-enabled': WindowEvent<Topic, Type>;
+    'window-will-move': WillMoveOrResize<Topic, Type>;
+    'window-will-resize': WillMoveOrResize<Topic, Type>;
 }
 
 // This is the type we should be using. It takes the more generic mapping and applies the proper Topic and Type to each event

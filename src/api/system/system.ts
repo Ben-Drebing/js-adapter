@@ -25,6 +25,10 @@ import { CrashReporterOption } from './crashReporterOption';
 import { SystemEvents } from '../events/system';
 import { _Window } from '../window/window';
 
+interface ServiceIdentifier {
+    name: string;
+}
+
 /**
  * AppAssetInfo interface
  * @typedef { object } AppAssetInfo
@@ -164,7 +168,7 @@ import { _Window } from '../window/window';
  * @typedef { object } FrameInfo
  * @property { string } name The name of the frame
  * @property { string } uuid The uuid of the frame
- * @property { entityType } entityType The entity type, could be 'window', 'iframe', 'external connection' or 'unknown'
+ * @property { EntityType } entityType The entity type, could be 'window', 'iframe', 'external connection' or 'unknown'
  * @property { Identity } parent The parent identity
  */
 
@@ -213,8 +217,15 @@ import { _Window } from '../window/window';
  * @typedef { object } LogInfo
  * @property { string } name The filename of the log
  * @property { number } size The size of the log in bytes
- * @property { string } date The unix time at which the log was created "Thu Jan 08 2015 14:40:30 GMT-0500 (Eastern Standard Time)""
+ * @property { string } date The unix time at which the log was created "Thu Jan 08 2015 14:40:30 GMT-0500 (Eastern Standard Time)"
  */
+
+/**
+* ManifestInfo interface
+* @typedef { object } ManifestInfo
+* @property { string } uuid The uuid of the application
+* @property { string } manifestUrl The runtime manifest URL
+*/
 
 /**
  * MonitorDetails interface
@@ -271,7 +282,7 @@ import { _Window } from '../window/window';
 /**
  * ProcessInfo interface
  * @typedef { object } ProcessInfo
- * @property { numder } cpuUsage The percentage of total CPU usage
+ * @property { number } cpuUsage The percentage of total CPU usage
  * @property { string } name The application name
  * @property { number } nonPagedPoolUsage The current nonpaged pool usage in bytes
  * @property { number } pageFaultCount The number of page faults
@@ -283,14 +294,14 @@ import { _Window } from '../window/window';
  * @property { number } peakWorkingSetSize The peak working set size in bytes
  * @property { number } processId The native process identifier
  * @property { string } uuid The application UUID
- * @property { nubmer } workingSetSize The current working set size (both shared and private data) in bytes
+ * @property { number } workingSetSize The current working set size (both shared and private data) in bytes
  */
 
 /**
  * ProxyConfig interface
  * @typedef { object } ProxyConfig
  * @property { string } proxyAddress The configured proxy address
- * @property { numder } proxyPort The configured proxy port
+ * @property { number } proxyPort The configured proxy port
  * @property { string } type The proxy Type
  */
 
@@ -314,9 +325,9 @@ import { _Window } from '../window/window';
  * Rect interface
  * @typedef { object } Rect
  * @property { number } bottom The bottom-most coordinate
- * @property { nubmer } left The left-most coordinate
+ * @property { number } left The left-most coordinate
  * @property { number } right The right-most coordinate
- * @property { nubmer } top The top-most coordinate
+ * @property { number } top The top-most coordinate
  */
 
 /**
@@ -341,7 +352,7 @@ import { _Window } from '../window/window';
  * @typedef { object } RuntimeInfo
  * @property { string } architecture The runtime build architecture
  * @property { string } manifestUrl The runtime manifest URL
- * @property { nubmer } port The runtime websocket port
+ * @property { number } port The runtime websocket port
  * @property { string } securityRealm The runtime security realm
  * @property { string } version The runtime version
  * @property { object } args the command line argument used to start the Runtime
@@ -356,6 +367,26 @@ import { _Window } from '../window/window';
  * @property { string } 'start-time' The start time of RVM
  * @property { string } version The version of RVM
  * @property { string } 'working-dir' The working directory
+ */
+
+ /**
+  * RvmLaunchOptions interface
+  * @typedef { object } RvmLaunchOptions
+  * @property { boolean } [noUi] true if no UI when launching
+  * @property { object } [userAppConfigArgs] The user app configuration args
+  */
+
+ /**
+ * ServiceIdentifier interface
+ * @typedef { object } ServiceIdentifier
+ * @property { string } name The name of the service
+ */
+
+ /**
+ * ServiceConfiguration interface
+ * @typedef { object } ServiceConfiguration
+ * @property { object } config The service configuration
+ * @property { string } name The name of the service
  */
 
 /**
@@ -427,16 +458,6 @@ import { _Window } from '../window/window';
  * @property { WindowDetail } mainWindow The main window detail
  * @property { string } uuid The uuid of the application
  */
-
- /**
- * Service identifier
- * @typedef { object } ServiceIdentifier
- * @property { string } name The name of the service
- */
-
- interface ServiceIdentifier {
-     name: string;
- }
 
 /**
  * An object representing the core of OpenFin Runtime. Allows the developer
@@ -741,13 +762,13 @@ export default class System extends EmitterBase<SystemEvents> {
 
     /**
      * Returns an array of all the installed runtime versions in an object.
-     * @return {Promise.<InstalledRuntimes>}
+     * @return {Promise.<string[]>}
      * @tutorial System.getInstalledRuntimes
      */
     // incompatible with standalone node process.
-    public getInstalledRuntimes() : Promise<InstalledRuntimes> {
+    public getInstalledRuntimes() : Promise<string[]> {
         return this.wire.sendAction('get-installed-runtimes')
-            .then(({ payload }) => payload.data);
+            .then(({ payload }) => payload.data.runtimes);
     }
 
     /**
@@ -862,7 +883,10 @@ export default class System extends EmitterBase<SystemEvents> {
     }
 
     /**
-     * Runs an executable or batch file.
+     * Runs an executable or batch file. A path to the file must be included in options.
+     * <br> A uuid may be optionally provided. If not provided, OpenFin will create a uuid for the new process.
+     * <br> Note: This method is restricted by default and must be enabled via
+     * <a href="https://developers.openfin.co/docs/api-security">API security settings</a>.
      * @param { ExternalProcessRequestType } options A object that is defined in the ExternalProcessRequestType interface
      * @return {Promise.<Identity>}
      * @tutorial System.launchExternalProcess
@@ -872,7 +896,8 @@ export default class System extends EmitterBase<SystemEvents> {
     }
 
     /**
-     * Monitors a running process.
+     * Monitors a running process. A pid for the process must be included in options.
+     * <br> A uuid may be optionally provided. If not provided, OpenFin will create a uuid for the new process.
      * @param { ExternalProcessInfo } options See tutorial for more details
      * @return {Promise.<Identity>}
      * @tutorial System.monitorExternalProcess
@@ -924,7 +949,9 @@ export default class System extends EmitterBase<SystemEvents> {
 
     /**
      * Attempt to close an external process. The process will be terminated if it
-     * has not closed after the elapsed timeout in milliseconds.
+     * has not closed after the elapsed timeout in milliseconds.<br>
+     * Note: This method is restricted by default and must be enabled via
+     * <a href="https://developers.openfin.co/docs/api-security">API security settings</a>.
      * @param { TerminateExternalRequestType } options A object defined in the TerminateExternalRequestType interface
      * @return {Promise.<void>}
      * @tutorial System.terminateExternalProcess
@@ -945,7 +972,9 @@ export default class System extends EmitterBase<SystemEvents> {
     }
 
     /**
-     * Downloads the given application asset
+     * Downloads the given application asset<br>
+     * Note: This method is restricted by default and must be enabled via
+     * <a href="https://developers.openfin.co/docs/api-security">API security settings</a>.
      * @param { AppAssetInfo } appAsset App asset object
      * @return {Promise.<void>}
      * @tutorial System.downloadAsset
@@ -1081,7 +1110,9 @@ export default class System extends EmitterBase<SystemEvents> {
 
     /**
      * Retrieves an array of objects representing information about currently
-     * running user-friendly native windows on the system.
+     * running user-friendly native windows on the system.<br>
+     * Note: This method is restricted by default and must be enabled via
+     * <a href="https://developers.openfin.co/docs/api-security">API security settings</a>.
      * @return {Promise.Array.<Identity>}
      * @experimental
      */
@@ -1145,7 +1176,9 @@ export default class System extends EmitterBase<SystemEvents> {
     }
 
     /**
-     * Reads the specifed value from the registry.
+     * Reads the specifed value from the registry.<br>
+     * Note: This method is restricted by default and must be enabled via
+     * <a href="https://developers.openfin.co/docs/api-security">API security settings</a>.
      * @param { string } rootKey - The registry root key.
      * @param { string } subkey - The registry key.
      * @param { string } value - The registry value name.
